@@ -794,7 +794,7 @@
             const ctx = canvas.getContext('2d'); ctx.fillStyle = '#966F33'; ctx.fillRect(0,0,256,256);
             for (let i = 0; i < 10000; i++) {
                 const x = Math.random()*256, y = Math.random()*256, r = Math.random()*1.5;
-                const g = Math.floor(Math.random()*100)+80; const color = \`rgb(\${g}, \${g-10}, \${g-20})\`;
+                const g = Math.floor(Math.random()*100)+80; const color = `rgb(${g}, ${g-10}, ${g-20})\`;
                 ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
             }
             const texture = new THREE.CanvasTexture(canvas); texture.wrapS = THREE.RepeatWrapping; texture.wrapT = THREE.RepeatWrapping; texture.repeat.set(80,5); return texture;
