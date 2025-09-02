@@ -727,7 +727,7 @@
         }
 
         async function callGeminiForJournalExpansion(text) {
-            const payload = { contents: [{ parts: [{ text: `Expand the following short story entry into a more detailed, cinematic paragraph suitable for a fantasy RPG game:\n\n\${text}` }] }], generationConfig: { responseMimeType: "text/plain" } };
+            const payload = { contents: [{ parts: [{ text: \`Expand the following short story entry into a more detailed, cinematic paragraph suitable for a fantasy RPG game:\\n\\n\${text}\` }] }], generationConfig: { responseMimeType: "text/plain" } };
             const result = await callProxyAPI(LLM_API_URL, payload);
             return result?.candidates?.[0]?.content?.parts?.[0]?.text;
         }
@@ -794,7 +794,7 @@
             const ctx = canvas.getContext('2d'); ctx.fillStyle = '#966F33'; ctx.fillRect(0,0,256,256);
             for (let i = 0; i < 10000; i++) {
                 const x = Math.random()*256, y = Math.random()*256, r = Math.random()*1.5;
-                const g = Math.floor(Math.random()*100)+80; const color = `rgb(${g}, ${g-10}, ${g-20})\`;
+                const g = Math.floor(Math.random()*100)+80; const color = \`rgb(\${g}, \${g-10}, \${g-20})\`;
                 ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
             }
             const texture = new THREE.CanvasTexture(canvas); texture.wrapS = THREE.RepeatWrapping; texture.wrapT = THREE.RepeatWrapping; texture.repeat.set(80,5); return texture;
@@ -1681,10 +1681,8 @@
             camera.left = -viewSize * aspect / 2; camera.right = viewSize * aspect / 2;
             camera.top = viewSize / 2; camera.bottom = -viewSize / 2; camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-         }
         });
-        
+
     </script>
- 
 </body>
 </html>
