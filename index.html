@@ -607,80 +607,37 @@
             }
         }
 
-      async function callGeminiForText(systemPrompt, userPrompt /*, schema */) // Prevent parallel AI calls from stacking up
-let __aiBusy = false;
+      let __aiBusy = false;
 
-async function callProxyAPI(apiUrl, payload) {
-  if (__aiBusy) return null;        // ignore double-clicks while busy
+async function callGeminiForText(systemPrompt, userPrompt, schema) {
+  if (__aiBusy) return null;
   __aiBusy = true;
-
   try {
-    const body = JSON.stringify(payload);
-    let attempts = 0;
-
-    while (attempts < 2) {          // 1 retry on rate limit
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body
-      });
-
-      // Gracefully handle rate limits
-      if (response.status === 429) {
-        attempts++;
-        await new Promise(r => setTimeout(r, 700)); // brief backoff
-        continue;
-      }
-
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => "");
-        console.error("API call via proxy failed:", response.status, errorText);
-
-        if (response.status === 404) {
-          showMessage("AI endpoint not found. Use /api/gemini or add rewrites.");
-        } else if (response.status === 500 && /API key not configured/i.test(errorText)) {
-          showMessage("AI features are not configured on the server.");
-        } else if (response.status === 500) {
-          showMessage("AI service error — using built-in prompts for now.");
-        } else if (response.status === 400) {
-          showMessage("The AI rejected the request. We’ll use a simpler prompt.");
-        } else {
-          showMessage("Unexpected server error. Please try again.");
-        }
-        return null;
-      }
-
-      // Parse JSON (some gateways send text with JSON content)
-      const ct = response.headers.get('content-type') || '';
-      const data = ct.includes('application/json')
-        ? await response.json()
-        : JSON.parse(await response.text());
-
-      // Model-level safety stop
-      if (data?.candidates?.[0]?.finishReason === 'SAFETY') {
-        showMessage("Your writing was blocked for safety reasons. Please revise and try again.");
-        return null;
-      }
-
-      return data; // success
+    const payload = {
+      contents: [
+        { role: "user", parts: [{ text: `SYSTEM:
+${systemPrompt}` }] },
+        { role: "user", parts: [{ text: userPrompt }] }
+      ],
+      generationConfig: schema
+        ? { responseMimeType: "application/json" }
+        : { responseMimeType: "text/plain" }
+    };
+    const result = await callProxyAPI(LLM_API_URL, payload);
+    if (!result) return null;
+    const part = result?.candidates?.[0]?.content?.parts?.[0];
+    const text = part?.text || "";
+    if (!text) return null;
+    if (schema) {
+      try { return JSON.parse(text); } catch { return null; }
     }
-
-    showMessage("AI is busy — continuing with built-in prompts.");
-    return null;
-
-  } catch (err) {
-    console.error("Error calling proxy API:", err);
-    showMessage("Network error — please try again.");
-    return null;
+    return text;
   } finally {
     __aiBusy = false;
   }
 }
 
-}
-
-
-        async function callGeminiClassifier(text) {
+async function callGeminiClassifier(text) {
             const systemPrompt = `You are a Year 7 classroom safety checker. Analyze the student's text and return strict JSON.
             Definitions:
             - inappropriate = true if sexual content, hateful/harassing language, self-harm, explicit illegal activity, or doxxing/PII.
