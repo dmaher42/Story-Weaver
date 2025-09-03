@@ -607,27 +607,76 @@
             }
         }
 
-      async function callGeminiForText(systemPrompt, userPrompt /*, schema */) {
-  // Build minimal, robust payload
-  const payload = {
-    contents: [{ parts: [{ text: userPrompt }] }],
-    systemInstruction: { parts: [{ text: systemPrompt }] },
-    // Keep only responseMimeType; remove responseSchema to avoid 400s
-    generationConfig: { responseMimeType: "application/json" }
-  };
+      async function callGeminiForText(systemPrompt, userPrompt /*, schema */) // Prevent parallel AI calls from stacking up
+let __aiBusy = false;
 
-  const result = await callProxyAPI(LLM_API_URL, payload);
-  if (!result || !result.candidates || !result.candidates[0].content) return null;
+async function callProxyAPI(apiUrl, payload) {
+  if (__aiBusy) return null;        // ignore double-clicks while busy
+  __aiBusy = true;
 
-  // Defensive parse
   try {
-    const textResponse = result.candidates[0].content.parts?.[0]?.text ?? "";
-    // When model returns plain JSON, parse; if it returns non-JSON, fallback to null
-    return JSON.parse(textResponse);
-  } catch (err) {
-    console.warn("Non-JSON or malformed JSON from model; raw text:", err);
+    const body = JSON.stringify(payload);
+    let attempts = 0;
+
+    while (attempts < 2) {          // 1 retry on rate limit
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body
+      });
+
+      // Gracefully handle rate limits
+      if (response.status === 429) {
+        attempts++;
+        await new Promise(r => setTimeout(r, 700)); // brief backoff
+        continue;
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "");
+        console.error("API call via proxy failed:", response.status, errorText);
+
+        if (response.status === 404) {
+          showMessage("AI endpoint not found. Use /api/gemini or add rewrites.");
+        } else if (response.status === 500 && /API key not configured/i.test(errorText)) {
+          showMessage("AI features are not configured on the server.");
+        } else if (response.status === 500) {
+          showMessage("AI service error — using built-in prompts for now.");
+        } else if (response.status === 400) {
+          showMessage("The AI rejected the request. We’ll use a simpler prompt.");
+        } else {
+          showMessage("Unexpected server error. Please try again.");
+        }
+        return null;
+      }
+
+      // Parse JSON (some gateways send text with JSON content)
+      const ct = response.headers.get('content-type') || '';
+      const data = ct.includes('application/json')
+        ? await response.json()
+        : JSON.parse(await response.text());
+
+      // Model-level safety stop
+      if (data?.candidates?.[0]?.finishReason === 'SAFETY') {
+        showMessage("Your writing was blocked for safety reasons. Please revise and try again.");
+        return null;
+      }
+
+      return data; // success
+    }
+
+    showMessage("AI is busy — continuing with built-in prompts.");
     return null;
+
+  } catch (err) {
+    console.error("Error calling proxy API:", err);
+    showMessage("Network error — please try again.");
+    return null;
+  } finally {
+    __aiBusy = false;
   }
+}
+
 }
 
 
