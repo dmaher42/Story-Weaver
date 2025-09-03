@@ -635,19 +635,20 @@
             - rewrite_suggestion: one short, school-safe tip (<=20 words) that preserves intent but removes issues.
             Do not echo slurs or sexual content in your JSON.`.trim();
 
-            const schema = {
-                type: "OBJECT",
-                additionalProperties: false,
-                properties: {
-                    inappropriate: { type: "BOOLEAN" },
-                    reasons: { type: "ARRAY", items: { type: "STRING" } },
-                    violence_severity: { type: "NUMBER" },
-                    gore_severity: { type: "NUMBER" },
-                    slang_flags: { type: "ARRAY", items: { type: "STRING" } },
-                    includes_brainrot: { type: "BOOLEAN" },
-                    rewrite_suggestion: { type: "STRING" }
-                }
-            };
+         const schema = {
+  type: "object",
+  properties: {
+    inappropriate: { type: "boolean" },
+    reasons: { type: "array", items: { type: "string" } },
+    violence_severity: { type: "number" },
+    gore_severity: { type: "number" },
+    slang_flags: { type: "array", items: { type: "string" } },
+    includes_brainrot: { type: "boolean" },
+    rewrite_suggestion: { type: "string" }
+  },
+  required: ["inappropriate", "violence_severity", "gore_severity", "includes_brainrot"]
+};
+
 
             const result = await callGeminiForText(systemPrompt, text, schema);
             return result || { inappropriate: false, reasons: [], violence_severity: 0, gore_severity: 0, slang_flags: [], includes_brainrot: false, rewrite_suggestion: "Use precise verbs and non-graphic detail." };
