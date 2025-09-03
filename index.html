@@ -1045,7 +1045,7 @@
                 prewriteFeedback.innerHTML = `<div class="feedback-error">${gate.message || "Please rewrite safely."}</div>`;
                 return;
             }
-            const usesAction = chosenActionWord && new RegExp(`\\\\b${chosenActionWord}\\\\b`, 'i').test(sentence);
+            const usesAction = chosenActionWord && new RegExp(`\\\\b${chosenActionWord}\\b`, 'i').test(sentence);
             if (!usesAction) {
                 prewriteFeedback.innerHTML = '<div class="feedback-error">Use your chosen action word to win the mini-battle.</div>';
                 return;
