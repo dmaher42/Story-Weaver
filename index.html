@@ -607,22 +607,29 @@
             }
         }
 
-        async function callGeminiForText(systemPrompt, userPrompt, schema) {
-            const payload = {
-                contents: [{ parts: [{ text: userPrompt }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] },
-                generationConfig: { responseMimeType: "application/json", responseSchema: schema }
-            };
-            const result = await callProxyAPI(LLM_API_URL, payload);
-            if (!result || !result.candidates || !result.candidates[0].content) return null;
-            try {
-                const textResponse = result.candidates[0].content.parts[0].text;
-                return JSON.parse(textResponse);
-            } catch (error) {
-                console.error("Failed to parse JSON from API:", error);
-                return null;
-            }
-        }
+      async function callGeminiForText(systemPrompt, userPrompt /*, schema */) {
+  // Build minimal, robust payload
+  const payload = {
+    contents: [{ parts: [{ text: userPrompt }] }],
+    systemInstruction: { parts: [{ text: systemPrompt }] },
+    // Keep only responseMimeType; remove responseSchema to avoid 400s
+    generationConfig: { responseMimeType: "application/json" }
+  };
+
+  const result = await callProxyAPI(LLM_API_URL, payload);
+  if (!result || !result.candidates || !result.candidates[0].content) return null;
+
+  // Defensive parse
+  try {
+    const textResponse = result.candidates[0].content.parts?.[0]?.text ?? "";
+    // When model returns plain JSON, parse; if it returns non-JSON, fallback to null
+    return JSON.parse(textResponse);
+  } catch (err) {
+    console.warn("Non-JSON or malformed JSON from model; raw text:", err);
+    return null;
+  }
+}
+
 
         async function callGeminiClassifier(text) {
             const systemPrompt = `You are a Year 7 classroom safety checker. Analyze the student's text and return strict JSON.
